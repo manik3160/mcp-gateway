@@ -14,7 +14,7 @@ You must register your MCP servers to be discovered and routed by the MCP Gatewa
 
 An MCPGatewayExtension tells the controller which Gateway this MCP Gateway instance serves. Without it, MCPServerRegistration resources will remain in NotReady status.
 
-> **Note:** Only one MCPGatewayExtension is allowed per namespace. If you followed the [quick start](./quick-start.md) or [install guide](./how-to-install-and-configure.md), an MCPGatewayExtension already exists. Check with `kubectl get mcpgatewayextension -A`. If one is already present and Ready, skip to Step 2.
+> **Note:** Only one MCPGatewayExtension is allowed per namespace. The `sectionName` field selects which listener on the Gateway to use, but each namespace can only have one MCPGatewayExtension. If you followed the [quick start](./quick-start.md) or [install guide](./how-to-install-and-configure.md), an MCPGatewayExtension already exists. Check with `kubectl get mcpgatewayextension -A`. If one is already present and Ready, skip to Step 2.
 
 If you need to create one:
 
