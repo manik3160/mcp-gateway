@@ -111,6 +111,12 @@ deploy-olm: olm-install ## Deploy controller via OLM on local cluster
 	docker exec $(KIND_CLUSTER_NAME)-control-plane ctr -n k8s.io images tag $(IMAGE_TAG_BASE)-catalog:local $(IMAGE_TAG_BASE)-catalog@$$CATALOG_DIGEST && \
 	"$(MAKE)" deploy-catalog CATALOG_IMG=$(IMAGE_TAG_BASE)-catalog@$$CATALOG_DIGEST
 
+KUADRANT_CATALOG_TAG ?= v1.4.3
+
+.PHONY: deploy-kuadrant-catalog
+deploy-kuadrant-catalog: ## Deploy Kuadrant OLM catalog from upstream repo
+	kubectl apply -f https://raw.githubusercontent.com/Kuadrant/kuadrant-operator/refs/tags/$(KUADRANT_CATALOG_TAG)/config/deploy/olm/catalogsource.yaml
+
 .PHONY: undeploy-olm
 undeploy-olm: operator-sdk ## Remove OLM-deployed controller
 	$(OPERATOR_SDK) cleanup mcp-gateway --namespace $(MCP_GATEWAY_NAMESPACE)
