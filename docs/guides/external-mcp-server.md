@@ -203,13 +203,10 @@ spec:
           authorization:
             plain:
               expression: 'request.headers["authorization"]'
-          x-mcp-api-key:
-            plain:
-              expression: 'request.headers["authorization"].split(" ")[1]'
 EOF
 ```
 
-This AuthPolicy extracts the API key from the OAuth token and sets it as the `x-mcp-api-key` header, resolving the OAuth + API Key conflict described in Issue #201.
+This AuthPolicy passes through the Authorization header from the original request.
 
 **Note:** This step is only required if you're using AuthPolicy for OAuth authentication. For simple bearer token auth, the router handles the Authorization header automatically.
 

@@ -9,7 +9,7 @@ When a user makes an MCP request:
 1. AuthPolicy validates the user's OIDC token
 2. Authorino authenticates to Vault using the user's access token
 3. Authorino fetches the user's GitHub PAT from Vault, keyed by their OIDC subject
-4. The PAT is injected into the `Authorization` and `x-mcp-api-key` headers for the upstream MCP server
+4. The PAT is injected into the `Authorization` header for the upstream MCP server
 
 ## Prerequisites
 
@@ -147,10 +147,6 @@ spec:
             plain:
               expression: |
                 "Bearer " + auth.metadata.vault.data.data.github_pat
-          "x-mcp-api-key":
-            plain:
-              expression: |
-                auth.metadata.vault.data.data.github_pat
 EOF
 ```
 

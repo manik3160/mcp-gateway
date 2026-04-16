@@ -15,6 +15,3 @@ spec:
           authorization:
             plain:
               expression: 'request.headers["authorization"]'
-          x-mcp-api-key:
-            plain:
-              expression: 'request.headers["authorization"].split(" ")[1]'

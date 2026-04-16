@@ -153,7 +153,6 @@ Docs and scripts on `main` always reference the latest published release version
 - Router (ext_proc) properly sets routing headers:
   - `:authority` header set to HTTPRoute hostname (URLRewrite filter handles external rewrite)
   - `:path` header set to custom path (e.g., `/v1/special/mcp`) when specified
-  - `x-mcp-api-key` header for backend API keys (to avoid OAuth conflicts)
   - Authorization header added with Bearer token only when no existing Authorization header is present
   - Tool name prefix stripping working correctly
 - Custom MCP paths:
@@ -264,11 +263,7 @@ stringData:
 ### OAuth + API Key Conflict (Issue #201)
 **Problem**: When using AuthPolicy (e.g., Kuadrant/Authorino), there's a timing issue where ext_proc runs FIRST and AuthPolicy runs SECOND. If ext_proc replaces the OAuth token with an API key, AuthPolicy fails.
 
-**Solution**: The router now sets both headers:
-- `x-mcp-api-key`: Backend API key (always set when credentials exist)
-- `authorization`: Only set if no existing Authorization header present (for backwards compatibility)
-
-This allows AuthPolicy to validate the OAuth token while backends receive their required API keys via the `x-mcp-api-key` header.
+**Solution**: The router only sets the Authorization header when no existing Authorization header is present. This allows AuthPolicy to validate the OAuth token first, then the router adds backend credentials only if the request doesn't already have auth.
 
 ## Test Servers
 
