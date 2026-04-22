@@ -30,11 +30,7 @@ auth-example-setup: cert-manager-install kuadrant-install keycloak-install ## Se
 	@echo ""
 	@echo "Step 3/6: Applying AuthPolicy configurations..."
 	@kubectl apply -k ./config/samples/oauth-token-exchange/
-	@if kubectl get namespace kuadrant-system >/dev/null 2>&1; then \
-		KUADRANT_NS=kuadrant-system; \
-	else \
-		KUADRANT_NS=mcp-system; \
-	fi; \
+	@$(detect-kuadrant-ns); \
 	kubectl apply -f ./config/samples/oauth-token-exchange/trusted-headers-private-key.yaml -n $$KUADRANT_NS; \
 	kubectl apply -f ./config/samples/oauth-token-exchange/token-exchange-secret.yaml -n $$KUADRANT_NS
 	@kubectl patch mcpgatewayextension mcp-gateway-extension -n mcp-system --type='merge' \
@@ -46,11 +42,8 @@ auth-example-setup: cert-manager-install kuadrant-install keycloak-install ## Se
 	@echo "✅ CORS configured"
 	@echo ""
 	@echo "Step 5/6: Patch Authorino deployment to be able to connect to Keycloak..."
-	@if kubectl get namespace kuadrant-system >/dev/null 2>&1; then \
-		./utils/patch-authorino-to-keycloak.sh kuadrant-system; \
-	else \
-		./utils/patch-authorino-to-keycloak.sh mcp-system; \
-	fi
+	@$(detect-kuadrant-ns); \
+	./utils/patch-authorino-to-keycloak.sh $$KUADRANT_NS
 	@echo "✅ Authorino deployment patched"
 	@echo ""
 	@echo "Step 6/6: Deploying test MCP servers..."

@@ -28,12 +28,14 @@ kuadrant-install-impl: $(HELM)
 				--timeout=600s \
 				--namespace $(KUADRANT_NAMESPACE); \
 		fi; \
-		echo ""; \
-		echo "Instantiating Kuadrant..."; \
-		$(KUBECTL) apply -f config/kuadrant/kuadrant.yaml; \
-		echo ""; \
-		echo "Kuadrant operator installed and instantiated!"; \
-		echo "You can now create RateLimitPolicy, AuthPolicy, and other Kuadrant resources."; \
+	fi
+	@if kubectl get namespace kuadrant-system >/dev/null 2>&1; then KUADRANT_NS=kuadrant-system; else KUADRANT_NS=mcp-system; fi; \
+	if kubectl get kuadrant -A 2>/dev/null | grep -q kuadrant; then \
+		echo "Kuadrant CR already exists, skipping."; \
+	else \
+		echo "Instantiating Kuadrant in namespace $$KUADRANT_NS..."; \
+		$(KUBECTL) apply -f config/kuadrant/kuadrant.yaml -n $$KUADRANT_NS; \
+		echo "Kuadrant CR created."; \
 	fi
 
 .PHONY: kuadrant-uninstall

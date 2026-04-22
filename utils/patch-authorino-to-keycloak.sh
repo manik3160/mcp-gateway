@@ -7,7 +7,7 @@ AUTHORINO_NS="${1:-kuadrant-system}"
 
 echo "Patching Authorino in namespace $AUTHORINO_NS to trust Keycloak's TLS certificate..."
 
-kubectl create configmap mcp-gateway-keycloak-cert -n "$AUTHORINO_NS" --from-file=keycloak.crt=./out/certs/ca.crt
+kubectl create configmap mcp-gateway-keycloak-cert -n "$AUTHORINO_NS" --from-file=keycloak.crt=./out/certs/ca.crt --dry-run=client -o yaml | kubectl apply -f -
 
 kubectl patch authorino authorino -n "$AUTHORINO_NS" --type merge -p '
 {

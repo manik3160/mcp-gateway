@@ -64,6 +64,11 @@ GATEWAY_API_VERSION ?= v1.4.1
 # The KIND cluster name must match ./build/kind.mk
 KIND_CLUSTER_NAME ?= mcp-gateway
 MCP_GATEWAY_NAMESPACE ?= mcp-system
+
+# Detect the namespace where Kuadrant is installed (kuadrant-system for Helm, mcp-system for OLM).
+# Usage in recipes: $(call detect-kuadrant-ns) sets $$KUADRANT_NS
+detect-kuadrant-ns = if kubectl get namespace kuadrant-system >/dev/null 2>&1; then KUADRANT_NS=kuadrant-system; else KUADRANT_NS=mcp-system; fi
+
 MCP_GATEWAY_SUBDOMAIN ?= mcp
 MCP_GATEWAY_HOST ?= $(MCP_GATEWAY_SUBDOMAIN).127-0-0-1.sslip.io
 MCP_GATEWAY_NAME ?= mcp-gateway
