@@ -10,13 +10,12 @@ Add support for federating MCP Prompts through the gateway, following the same p
 - Rename `toolPrefix` to `prefix` on MCPServerRegistration CRD (breaking change) and use it for both tool and prompt prefixing
 - Support `prompts/list` and `prompts/get` MCP methods
 - Handle `notifications/prompts/list_changed` from upstream servers
-- Apply VirtualServer and authorization filtering to prompts
-- Report discovered prompt counts in MCPServerRegistration status
+- Apply VirtualServer filtering to prompts
+- Apply authorization filtering to prompts via a generalized authorization header
 
 ## Non-Goals
 
 - Resource federation — tracked separately in [#788](https://github.com/Kuadrant/mcp-gateway/issues/788)
-- Prompt-specific authorization claims in JWT — initial implementation applies server-level filtering only;
 - Prompt validation (prompts have no JSON schemas like tools, so `invalidToolPolicy` does not apply)
 
 ## Design
@@ -25,7 +24,7 @@ Add support for federating MCP Prompts through the gateway, following the same p
 
 **Breaking change**: The `toolPrefix` field on MCPServerRegistration is renamed to `prefix`. This field has always been a server-level namespace, not tool-specific, and the rename aligns the API with its actual semantics now that it applies to both tools and prompts.
 
-**Migration**: Users must replace `toolPrefix` with `prefix` in their MCPServerRegistration manifests. The CEL immutability validation carries over to the renamed field.
+**Migration**: Users must replace `toolPrefix` with `prefix` in their MCPServerRegistration manifests. Since the field has CEL immutability validation, existing resources must be deleted and recreated (not patched in-place). For bulk updates, a `sed` one-liner or `yq` edit on manifest files before `kubectl apply` is sufficient.
 
 **Scope of rename** (57 files affected):
 - CRD types: `api/v1alpha1/types.go` — rename field and JSON tag
@@ -40,7 +39,7 @@ All other changes (prompt federation, new CRD fields) are additive and non-break
 
 No new components. The existing broker, manager, and router are extended.
 
-```
+```text
 prompts/list flow:
 
   Client ──► Envoy ──► ext_proc (router) ──► HandleNoneToolCall()
@@ -82,19 +81,6 @@ prompts/get flow:
 `prompts/get` follows the same path as `tools/call` — the router identifies the upstream server by the prefixed prompt name, strips the prefix, sets routing headers, and forwards to the correct upstream.
 
 ### API Changes
-
-#### MCPServerRegistration Status
-
-Add `discoveredPrompts` to report prompt discovery alongside tools:
-
-```yaml
-status:
-  discoveredTools: 4
-  discoveredPrompts: 2    # new
-  conditions:
-    - type: Ready
-      status: "True"
-```
 
 #### MCPVirtualServer Spec
 
@@ -147,7 +133,7 @@ The manager constructor receives the listening server as both `ToolsAdderDeleter
 
 New file mirroring `filtered_tools_handler.go`. Applies VirtualServer filtering and strips `kuadrant/id` gateway metadata from prompts before returning to clients.
 
-There is no `allowed-prompts` JWT claim in this implementation. If a user has access to any tools on a server via the `allowed-tools` JWT, they implicitly have access to all prompts on that server too. Per-prompt JWT filtering can be added later without breaking changes.
+Initial implementation applies VirtualServer-level filtering only. Per-prompt authorization via JWT claims is deferred — see Security Considerations.
 
 #### Router (`internal/mcp-router/request_handlers.go`)
 
@@ -158,32 +144,26 @@ There is no `allowed-prompts` JWT claim in this implementation. If a user has ac
 #### Config and CRD Types
 
 - `internal/config/types.go`: Rename `ToolPrefix` to `Prefix` on `MCPServer`. Add `Prompts []string` to `VirtualServer`.
-- `api/v1alpha1/types.go`: Rename `toolPrefix` to `prefix` on MCPServerRegistration spec. Add `discoveredPrompts` to status. Add `prompts` to MCPVirtualServer spec.
-
-#### Controller (`internal/controller/mcpserverregistration_controller.go`)
-
-Extend `ServerValidationStatus` with `TotalPrompts`. Update `updateStatus()` to populate `DiscoveredPrompts` from the broker status response.
-
-#### Notifications
-
-The existing notification design (`docs/design/notifications.md`) already accounts for `notifications/prompts/list_changed` as a state change event. The MCPManager re-fetches prompts on notification receipt, same as tools. The notifications doc status table should be updated from "Not applicable" to "Implemented" once complete.
+- `api/v1alpha1/types.go`: Rename `toolPrefix` to `prefix` on MCPServerRegistration spec. Add `prompts` to MCPVirtualServer spec.
 
 ### Security Considerations
 
 - Prompt filtering reuses the existing VirtualServer mechanism. Prompts not listed in a VirtualServer's `prompts` field are not exposed.
 - The `kuadrant/id` metadata added to prompts during federation is stripped before returning to clients, same as tools.
-- Backend credentials for `prompts/get` routing use the same `credentialRef` and `x-mcp-api-key` header mechanism as `tools/call`.
+- `prompts/get` routing uses the same client authentication flow as `tools/call` — the client provides credentials via AuthPolicy, and the gateway forwards the Authorization header to the upstream server. `credentialRef` is only used for broker-to-upstream connections (discovering tools/prompts), not for client-facing auth.
+- **Authorization header generalization**: The current `x-authorized-tools` header only covers tools. As prompts (and later resources) are federated, this should be generalized — e.g. an `x-mcp-authorized` header carrying a structured map (`tools`, `prompts`, `resources` per server). This avoids adding a new header for each federated capability. The initial implementation can add a separate `x-authorized-prompts` header, but the generalized approach should be considered for a follow-up.
+- **Per-prompt JWT claims**: The initial implementation does not include prompt-specific JWT claims. Tools and prompts are distinct capabilities — a user authorized for tools on a server should not implicitly have access to all prompts. Per-prompt authorization via JWT claims should be layered on as a follow-up.
 - No new RBAC or privilege escalation concerns — prompts follow the same access path as tools.
 
 ## Testing Strategy
 
 - **Unit tests**: MCPManager prompt discovery, diffing, conflict detection, prefix handling. Broker `FilterPrompts` hook. Router `PromptName()` extraction and `HandlePromptGet()` routing logic. Mirror existing tool test patterns in `manager_test.go`, `broker_test.go`, `request_handlers_test.go`.
-- **Integration tests**: Controller status reporting includes `discoveredPrompts`. VirtualServer filtering applies to prompts.
+- **Integration tests**: VirtualServer filtering applies to prompts.
 - **E2E tests**: Register servers with prompts, verify `prompts/list` returns prefixed names, call `prompts/get` and verify response, unregister and verify cleanup. Test with multiple servers to verify cross-server prefix isolation. Test virtual server prompt filtering.
 
 ## References
 
-- [MCP Prompts Specification](https://modelcontextprotocol.io/specification/2025-06-18/server/prompts)
+- [MCP Prompts Specification](https://modelcontextprotocol.io/specification/latest/server/prompts)
 - [mcp-go server.MCPServer API](https://pkg.go.dev/github.com/mark3labs/mcp-go/server)
 - [Issue #787 — Add support for MCP Prompts federation](https://github.com/Kuadrant/mcp-gateway/issues/787)
 - [Issue #208 — Investigate support for Resources and Prompts](https://github.com/Kuadrant/mcp-gateway/issues/208)
