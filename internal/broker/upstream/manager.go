@@ -457,9 +457,9 @@ func (man *MCPManager) diffTools(oldTools, newTools []mcp.Tool) ([]server.Server
 	return addedTools, removedTools
 }
 
-func prefixedName(toolPrefix, tool string) string {
-	if toolPrefix == "" {
+func prefixedName(prefix, tool string) string {
+	if prefix == "" {
 		return tool
 	}
-	return fmt.Sprintf("%s%s", toolPrefix, tool)
+	return fmt.Sprintf("%s%s", prefix, tool)
 }

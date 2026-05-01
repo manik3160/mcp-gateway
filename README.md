@@ -141,12 +141,12 @@ servers:
     url: http://weather.example.com:8080
     hostname: weather.example.com
     enabled: true
-    toolPrefix: "weather_"
+    prefix: "weather_"
   - name: calendar-service
     url: http://calendar.example.com:8080
     hostname: calendar.example.com
     enabled: true
-    toolPrefix: "cal_"
+    prefix: "cal_"
 ```
 
 ### Kubernetes Configuration
@@ -173,7 +173,7 @@ spec:
     group: gateway.networking.k8s.io
     kind: HTTPRoute
     name: weather-route
-  toolPrefix: weather_
+  prefix: weather_
 ---
 apiVersion: mcp.kuadrant.io/v1alpha1
 kind: MCPServerRegistration
@@ -184,7 +184,7 @@ spec:
     group: gateway.networking.k8s.io
     kind: HTTPRoute
     name: calendar-route
-  toolPrefix: cal_
+  prefix: cal_
 ```
 
 ## Command Line Flags

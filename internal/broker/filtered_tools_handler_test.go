@@ -51,12 +51,12 @@ func createTestJWT(t *testing.T, allowedTools map[string][]string) string {
 }
 
 // createTestManager creates a test MCPManager with pre-populated tools
-func createTestManager(t *testing.T, serverName, toolPrefix string, tools []mcp.Tool) *upstream.MCPManager {
+func createTestManager(t *testing.T, serverName, prefix string, tools []mcp.Tool) *upstream.MCPManager {
 	t.Helper()
 	mcpServer := upstream.NewUpstreamMCP(&config.MCPServer{
-		Name:       serverName,
-		ToolPrefix: toolPrefix,
-		URL:        "http://test.local/mcp",
+		Name:   serverName,
+		Prefix: prefix,
+		URL:    "http://test.local/mcp",
 	})
 	manager := upstream.NewUpstreamMCPManager(mcpServer, nil, slog.Default(), 0, mcpv1alpha1.InvalidToolPolicyFilterOut)
 	// populate tools directly for testing (this requires accessing internal state)

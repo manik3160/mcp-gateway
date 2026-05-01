@@ -30,9 +30,9 @@ func TestStatusHandlerNotGet(t *testing.T) {
 func createTestManagerForStatus(t *testing.T, serverName string, tools []mcp.Tool) *upstream.MCPManager {
 	t.Helper()
 	mcpServer := upstream.NewUpstreamMCP(&config.MCPServer{
-		Name:       serverName,
-		ToolPrefix: "test_",
-		URL:        "http://test.local/mcp",
+		Name:   serverName,
+		Prefix: "test_",
+		URL:    "http://test.local/mcp",
 	})
 	manager := upstream.NewUpstreamMCPManager(mcpServer, nil, slog.Default(), 0, mcpv1alpha1.InvalidToolPolicyFilterOut)
 	manager.SetToolsForTesting(tools)

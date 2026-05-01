@@ -3,7 +3,7 @@
 
 ### [Happy] Test registering multiple MCP servers with the gateway
 
-- When a developer creates multiple MCPServerRegistration resources with their corresponding HTTPRoutes, the gateway should register all servers and make their tools available. Each server's tools should be prefixed with the server's toolPrefix to avoid naming conflicts. A tools/list request should return tools from all registered servers.
+- When a developer creates multiple MCPServerRegistration resources with their corresponding HTTPRoutes, the gateway should register all servers and make their tools available. Each server's tools should be prefixed with the server's prefix to avoid naming conflicts. A tools/list request should return tools from all registered servers.
 
 
 ### [Happy] Test unregistering MCP servers from the gateway

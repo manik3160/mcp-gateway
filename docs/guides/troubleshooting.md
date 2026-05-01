@@ -219,7 +219,7 @@ kubectl logs -n mcp-system -l app.kubernetes.io/name=mcp-gateway
 - Verify backend MCP server implements `tools/list` method correctly
 - Check backend server logs for errors
 - Ensure backend server returns valid MCP protocol responses
-- Verify `toolPrefix` in MCPServerRegistration spec is valid (no spaces or special chars)
+- Verify `prefix` in MCPServerRegistration spec is valid (no spaces or special chars)
 
 ### Tool Prefix Not Applied
 
@@ -227,15 +227,15 @@ kubectl logs -n mcp-system -l app.kubernetes.io/name=mcp-gateway
 
 ```bash
 # Check MCPServerRegistration configuration
-kubectl get mcpsr <server-name> -n <namespace> -o yaml | grep toolPrefix
+kubectl get mcpsr <server-name> -n <namespace> -o yaml | grep prefix
 
 # Check controller logs
 kubectl logs -n mcp-system deployment/mcp-gateway-controller | grep prefix
 ```
 
 **Solutions**:
-- Ensure `toolPrefix` is set in MCPServerRegistration spec
-- Verify no typos in `toolPrefix` field name
+- Ensure `prefix` is set in MCPServerRegistration spec
+- Verify no typos in `prefix` field name
 - Restart broker after MCPServerRegistration changes: `kubectl rollout restart deployment/mcp-gateway -n mcp-system`
 
 ## External MCP Server Issues

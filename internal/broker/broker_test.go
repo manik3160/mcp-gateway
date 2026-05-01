@@ -65,9 +65,9 @@ func TestOnConfigChange(t *testing.T) {
 	b := NewBroker(logger)
 	conf := &config.MCPServersConfig{}
 	server1 := &config.MCPServer{
-		Name:       "test1",
-		URL:        MCPAddr,
-		ToolPrefix: "_test1",
+		Name:   "test1",
+		URL:    MCPAddr,
+		Prefix: "_test1",
 	}
 	virtualServer1 := &config.VirtualServer{
 		Name:  "test/test",
