@@ -634,7 +634,7 @@ local-env-teardown: ## Tear down the local Kind cluster
 
 
 .PHONY: add-jwt-key
-add-jwt-key: #add the public key needed to validate any incoming jwt based headers such as x-allowed-tools
+add-jwt-key: #add the public key needed to validate any incoming jwt based headers such as x-mcp-authorized
 	@for i in 1 2 3 4 5; do \
 		kubectl get deployment/$(BROKER_ROUTER_NAME) -n $(MCP_GATEWAY_NAMESPACE) -o yaml | \
 		bin/yq '.spec.template.spec.containers[0].env += [{"name":"TRUSTED_HEADER_PUBLIC_KEY","valueFrom":{"secretKeyRef":{"name":"trusted-headers-public-key","key":"key"}}}] | .spec.template.spec.containers[0].env |= unique_by(.name)' | \
