@@ -43,29 +43,15 @@ Create one secret for the broker's public key and one for Authorino's private ke
 The public-key secret must be created in the same namespace as the `MCPGatewayExtension`. In this example, that namespace is `mcp-system`.
 
 ```bash
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: trusted-headers-public-key
-  namespace: mcp-system
-type: Opaque
-stringData:
-  key: |
-$(sed 's/^/    /' public-key.pem)
-EOF
+kubectl create secret generic trusted-headers-public-key \
+  --from-file=key=public-key.pem \
+  -n mcp-system \
+  --dry-run=client -o yaml | kubectl apply -f -
 
-kubectl apply -f - <<EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: trusted-headers-private-key
-  namespace: kuadrant-system
-type: Opaque
-stringData:
-  key.pem: |
-$(sed 's/^/    /' private-key.pem)
-EOF
+kubectl create secret generic trusted-headers-private-key \
+  --from-file=key.pem=private-key.pem \
+  -n kuadrant-system \
+  --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 Verify that both secrets exist:
@@ -172,6 +158,12 @@ spec:
         headers:
           WWW-Authenticate:
             value: Bearer resource_metadata=https://mcp.example.com/.well-known/oauth-protected-resource/mcp
+        body:
+          value: |
+            {
+              "error": "Unauthorized",
+              "message": "Access denied: Authentication required."
+            }
       unauthorized:
         code: 403
         body:
