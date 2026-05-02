@@ -9,7 +9,7 @@ Tool revocation prevents a user or group from calling specific MCP tools. It bui
 Two enforcement points apply:
 
 - **`tools/call`**: The AuthPolicy's CEL expression checks the `x-mcp-toolname` header against the user's `resource_access` roles. A revoked tool returns 403 Forbidden.
-- **`tools/list`**: The broker filters the tools list using the signed `x-authorized-tools` header. A revoked tool no longer appears in the list.
+- **`tools/list`**: The broker filters the tools list using the signed `x-mcp-authorized` header. A revoked tool no longer appears in the list.
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ Two enforcement points apply:
 
 Remove the tool role from the user or group in your identity provider.
 
-In Keycloak, this is done by removing a client role mapping. The client name corresponds to the namespaced MCPServerRegistration (e.g., `mcp-test/server1-route`), and each role represents a tool name (e.g., `greet`, `headers`).
+In Keycloak, this is done by removing a client role mapping. The client name corresponds to the namespaced MCPServerRegistration (e.g., `mcp-test/server1-route`), and each role represents a tool name prefixed with `tool:` (e.g., `tool:greet`, `tool:headers`).
 
 To revoke a tool for a group:
 1. Go to **Groups** > select the group (e.g., `accounting`)
@@ -37,7 +37,7 @@ After revoking a tool, verify that the user can no longer call it. Log out of an
 
 Open MCP Inspector and connect to your gateway's `/mcp` endpoint. Authenticate through the OAuth flow.
 
-Under **Tools > List Tools**, the revoked tool will still appear unless you have also configured [user-based tool filtering](./user-based-tool-filter.md). Try calling the revoked tool — the request should return 403 Forbidden.
+Under **Tools > List Tools**, the revoked tool will still appear unless you have also configured [user-based tool filtering](./user-based-tool-filter.md). Try calling the revoked tool -- the request should return 403 Forbidden.
 
 ## Step 3: Understand When Revocation Takes Effect
 
@@ -53,14 +53,14 @@ To force faster revocation, reduce the access token lifespan in your identity pr
 
 ## Step 4: Enable tools/list Filtering
 
-By default, revoking a tool only blocks `tools/call` requests. The revoked tool can still appear in `tools/list` responses until you also configure signed `x-authorized-tools` filtering.
+By default, revoking a tool only blocks `tools/call` requests. The revoked tool can still appear in `tools/list` responses until you also configure signed `x-mcp-authorized` filtering.
 
 Follow [User-Based Tool Filtering](./user-based-tool-filter.md) to:
 
 - generate the signing keys
 - create the public and private key secrets
 - configure `MCPGatewayExtension.spec.trustedHeadersKey`
-- apply an `AuthPolicy` that emits the signed `x-authorized-tools` header
+- apply an `AuthPolicy` that emits the signed `x-mcp-authorized` header
 
 Once that guide is complete, return here and verify that revoked tools no longer appear in the tool list for the affected user.
 

@@ -23,15 +23,15 @@ VEiyi/nozagw7BaWXmzbOWyy95gZLirTkhUb1P4Z4lgKLU2rD5NCbGPHAA==
 -----END PUBLIC KEY-----`
 )
 
-func createTestJWT(t *testing.T, allowedTools map[string][]string) string {
+func createTestJWTWithCapabilities(t *testing.T, capabilities map[string]map[string][]string) string {
 	t.Helper()
-	claimPayload, _ := json.Marshal(allowedTools)
+	claimPayload, _ := json.Marshal(capabilities)
 	block, _ := pem.Decode([]byte(`-----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIEY3QeiP9B9Bm3NHG3SgyiDHcbckwsGsQLKgv4fJxjJWoAoGCCqGSM49
 AwEHoUQDQgAE7WdMdvC8hviEAL4wcebqaYbLEtVOVEiyi/nozagw7BaWXmzbOWyy
 95gZLirTkhUb1P4Z4lgKLU2rD5NCbGPHAA==
 -----END EC PRIVATE KEY-----`))
-	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{"allowed-tools": string(claimPayload)})
+	token := jwt.NewWithClaims(jwt.SigningMethodES256, jwt.MapClaims{"allowed-capabilities": string(claimPayload)})
 	parsedKey, err := x509.ParseECPrivateKey(block.Bytes)
 	if err != nil {
 		t.Fatalf("error parsing key for jwt %s", err)
@@ -41,6 +41,13 @@ AwEHoUQDQgAE7WdMdvC8hviEAL4wcebqaYbLEtVOVEiyi/nozagw7BaWXmzbOWyy
 		t.Fatalf("error signing jwt %s", err)
 	}
 	return jwtToken
+}
+
+func createTestJWT(t *testing.T, allowedTools map[string][]string) string {
+	t.Helper()
+	return createTestJWTWithCapabilities(t, map[string]map[string][]string{
+		"tools": allowedTools,
+	})
 }
 
 // createTestManager creates a test MCPManager with pre-populated tools
@@ -160,10 +167,119 @@ func TestFilteredTools(t *testing.T) {
 		},
 	}
 
+	promptsOnlyJWT := createTestJWTWithCapabilities(t, map[string]map[string][]string{
+		"prompts": {"mcp-test/test-server1": {"prompt1"}},
+	})
+	toolsAndPromptsJWT := createTestJWTWithCapabilities(t, map[string]map[string][]string{
+		"tools":   {"mcp-test/test-server1": {"tool"}},
+		"prompts": {"mcp-test/test-server1": {"prompt1", "prompt2"}},
+	})
+	promptsOnlyCases := []struct {
+		Name                 string
+		FullToolList         *mcp.ListToolsResult
+		AllowedToolsList     map[string][]string
+		RegisteredMCPServers map[config.UpstreamMCPID]*upstream.MCPManager
+		enforceFilterList    bool
+		ExpectedTools        []mcp.Tool
+		jwtOverride          string
+	}{
+		{
+			Name: "prompts-only JWT returns all tools when enforce is false",
+			FullToolList: &mcp.ListToolsResult{Tools: []mcp.Tool{
+				{Name: "test1_tool"},
+				{Name: "test1_tool2"},
+			}},
+			RegisteredMCPServers: map[config.UpstreamMCPID]*upstream.MCPManager{
+				"mcp-test/test-server1:test1_:http://test.local/mcp": createTestManager(t,
+					"mcp-test/test-server1",
+					"test1_",
+					[]mcp.Tool{{Name: "tool"}, {Name: "tool2"}},
+				),
+			},
+			enforceFilterList: false,
+			jwtOverride:       promptsOnlyJWT,
+			ExpectedTools: []mcp.Tool{
+				{Name: "test1_tool"},
+				{Name: "test1_tool2"},
+			},
+		},
+		{
+			Name: "prompts-only JWT returns empty tools when enforce is true",
+			FullToolList: &mcp.ListToolsResult{Tools: []mcp.Tool{
+				{Name: "test1_tool"},
+				{Name: "test1_tool2"},
+			}},
+			RegisteredMCPServers: map[config.UpstreamMCPID]*upstream.MCPManager{
+				"mcp-test/test-server1:test1_:http://test.local/mcp": createTestManager(t,
+					"mcp-test/test-server1",
+					"test1_",
+					[]mcp.Tool{{Name: "tool"}, {Name: "tool2"}},
+				),
+			},
+			enforceFilterList: true,
+			jwtOverride:       promptsOnlyJWT,
+			ExpectedTools:     []mcp.Tool{},
+		},
+		{
+			Name: "tools and prompts JWT filters tools only, prompts ignored",
+			FullToolList: &mcp.ListToolsResult{Tools: []mcp.Tool{
+				{Name: "test1_tool"},
+				{Name: "test1_tool2"},
+			}},
+			RegisteredMCPServers: map[config.UpstreamMCPID]*upstream.MCPManager{
+				"mcp-test/test-server1:test1_:http://test.local/mcp": createTestManager(t,
+					"mcp-test/test-server1",
+					"test1_",
+					[]mcp.Tool{{Name: "tool"}, {Name: "tool2"}},
+				),
+			},
+			enforceFilterList: true,
+			jwtOverride:       toolsAndPromptsJWT,
+			ExpectedTools: []mcp.Tool{
+				{Name: "test1_tool"},
+			},
+		},
+	}
+
+	for _, tc := range promptsOnlyCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			mcpBroker := &mcpBrokerImpl{
+				enforceCapabilityFilter: tc.enforceFilterList,
+				trustedHeadersPublicKey: testPublicKey,
+				logger:                  slog.Default(),
+				mcpServers:              tc.RegisteredMCPServers,
+			}
+
+			request := &mcp.ListToolsRequest{
+				Header: http.Header{
+					authorizedCapabilitiesHeader: {tc.jwtOverride},
+				},
+			}
+			mcpBroker.FilterTools(context.TODO(), 1, request, tc.FullToolList)
+
+			if len(tc.ExpectedTools) != len(tc.FullToolList.Tools) {
+				t.Fatalf("expected %d tools but got %d: %v", len(tc.ExpectedTools), len(tc.FullToolList.Tools), tc.FullToolList.Tools)
+			}
+
+			for _, exp := range tc.ExpectedTools {
+				found := false
+				for _, actual := range tc.FullToolList.Tools {
+					if exp.Name == actual.Name {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Fatalf("expected to find tool %s but it was not in returned tools %v", exp.Name, tc.FullToolList.Tools)
+				}
+			}
+		})
+	}
+
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			mcpBroker := &mcpBrokerImpl{
-				enforceToolFilter:       tc.enforceFilterList,
+				enforceCapabilityFilter: tc.enforceFilterList,
 				trustedHeadersPublicKey: testPublicKey,
 				logger:                  slog.Default(),
 				mcpServers:              tc.RegisteredMCPServers,
@@ -173,7 +289,7 @@ func TestFilteredTools(t *testing.T) {
 			if tc.AllowedToolsList != nil {
 				headerValue := createTestJWT(t, tc.AllowedToolsList)
 				request.Header = http.Header{
-					authorizedToolsHeader: {headerValue},
+					authorizedCapabilitiesHeader: {headerValue},
 				}
 			}
 			mcpBroker.FilterTools(context.TODO(), 1, request, tc.FullToolList)
@@ -266,9 +382,9 @@ func TestVirtualServerFiltering(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			mcpBroker := &mcpBrokerImpl{
-				enforceToolFilter: false,
-				virtualServers:    tc.VirtualServers,
-				logger:            slog.Default(),
+				enforceCapabilityFilter: false,
+				virtualServers:          tc.VirtualServers,
+				logger:                  slog.Default(),
 			}
 
 			request := &mcp.ListToolsRequest{Header: http.Header{}}
@@ -300,8 +416,8 @@ func TestVirtualServerFiltering(t *testing.T) {
 
 func TestFilterToolsSerializesAsEmptyArray(t *testing.T) {
 	mcpBroker := &mcpBrokerImpl{
-		enforceToolFilter: true, // will return empty when no header
-		logger:            slog.Default(),
+		enforceCapabilityFilter: true, // will return empty when no header
+		logger:                  slog.Default(),
 	}
 
 	// nil tools input
@@ -350,7 +466,7 @@ func TestCombinedAuthorizedToolsAndVirtualServer(t *testing.T) {
 		ExpectedTools    []string
 	}{
 		{
-			Name: "x-authorized-tools filtered first then virtual server filters further",
+			Name: "x-mcp-authorized filtered first then virtual server filters further",
 			MCPServers: map[config.UpstreamMCPID]*upstream.MCPManager{
 				"mcp-test/server1:s1_:http://test.local/mcp": createTestManager(t,
 					"mcp-test/server1",
@@ -374,7 +490,7 @@ func TestCombinedAuthorizedToolsAndVirtualServer(t *testing.T) {
 			ExpectedTools: []string{"s1_tool1"},
 		},
 		{
-			Name: "x-authorized-tools only when no virtual server header",
+			Name: "x-mcp-authorized only when no virtual server header",
 			MCPServers: map[config.UpstreamMCPID]*upstream.MCPManager{
 				"mcp-test/server1:s1_:http://test.local/mcp": createTestManager(t,
 					"mcp-test/server1",
@@ -395,7 +511,7 @@ func TestCombinedAuthorizedToolsAndVirtualServer(t *testing.T) {
 			ExpectedTools:   []string{"s1_tool1", "s1_tool2"},
 		},
 		{
-			Name: "virtual server only when no x-authorized-tools header",
+			Name: "virtual server only when no x-mcp-authorized header",
 			MCPServers: map[config.UpstreamMCPID]*upstream.MCPManager{
 				"mcp-test/server1:s1_:http://test.local/mcp": createTestManager(t,
 					"mcp-test/server1",
@@ -442,7 +558,7 @@ func TestCombinedAuthorizedToolsAndVirtualServer(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			mcpBroker := &mcpBrokerImpl{
-				enforceToolFilter:       false,
+				enforceCapabilityFilter: false,
 				trustedHeadersPublicKey: testPublicKey,
 				mcpServers:              tc.MCPServers,
 				virtualServers:          tc.VirtualServers,
@@ -461,7 +577,7 @@ func TestCombinedAuthorizedToolsAndVirtualServer(t *testing.T) {
 
 			request := &mcp.ListToolsRequest{Header: http.Header{}}
 			if tc.AllowedToolsList != nil {
-				request.Header[authorizedToolsHeader] = []string{createTestJWT(t, tc.AllowedToolsList)}
+				request.Header[authorizedCapabilitiesHeader] = []string{createTestJWT(t, tc.AllowedToolsList)}
 			}
 			if tc.VirtualServerID != "" {
 				request.Header[virtualMCPHeader] = []string{tc.VirtualServerID}

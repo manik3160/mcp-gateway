@@ -74,7 +74,7 @@ spec:
         patternMatching:
           patterns:
             - predicate: |
-                request.headers['x-mcp-toolname'] in (has(auth.authorization.token.claims.resource_access) && auth.authorization.token.claims.resource_access.exists(p, p == request.headers['x-mcp-servername']) ? auth.authorization.token.claims.resource_access[request.headers['x-mcp-servername']].roles : [])
+                ('tool:' + request.headers['x-mcp-toolname']) in (has(auth.authorization.token.claims.resource_access) && auth.authorization.token.claims.resource_access.exists(p, p == request.headers['x-mcp-servername']) ? auth.authorization.token.claims.resource_access[request.headers['x-mcp-servername']].roles : [])
         priority: 1
     response:
       success:
@@ -100,13 +100,3 @@ spec:
               "error": "Forbidden",
               "message": "MCP Tool Access denied: Insufficient permissions for this tool."
             }
----
-apiVersion: v1
-kind: Secret
-metadata:
-  name: token-exchange
-  namespace: kuadrant-system
-stringData:
-  oauth-client-basic-auth: bWNwLWdhdGV3YXk6c2VjcmV0
-  vault-token: root
-type: Opaque

@@ -10,10 +10,20 @@ The guide has two parts:
 ## Prerequisites
 
 - MCP Gateway installed and configured
-- Gateway API provider (Istio) with ServiceEntry and DestinationRule support
-- Network egress access to the external MCP server
-- A GitHub Personal Access Token with `read:user` scope — [create one here](https://github.com/settings/tokens/new)
-- **MCPGatewayExtension** targeting the Gateway (see [Configure MCP Servers](./register-mcp-servers.md#step-1-create-mcpgatewayextension))
+- Gateway API Provider (Istio) with ServiceEntry and DestinationRule support
+- Network egress access to external MCP server
+- Authentication credentials for the external server (if required)
+- **MCPGatewayExtension** targeting the Gateway (required for MCPServerRegistration to work)
+
+**Note:** If you're trying this locally, `make local-env-setup` or `make local-env-setup-olm` meets all prerequisites except the GitHub PAT. The optional AuthPolicy step (Step 6) additionally requires Kuadrant (`make auth-example-setup`).
+
+If you haven't created an MCPGatewayExtension yet, see [Configure MCP Servers](./register-mcp-servers.md#step-1-create-mcpgatewayextension) for instructions.
+
+## About the GitHub MCP Server
+
+The GitHub MCP server (https://api.githubcopilot.com/mcp/) provides programmatic access to GitHub functionality through the Model Context Protocol. It exposes tools for repository management, issues, pull requests, and code operations.
+
+For this example, you'll need a GitHub Personal Access Token with `read:user` permissions. Get one at https://github.com/settings/tokens/new
 
 ```bash
 export GITHUB_PAT="ghp_YOUR_GITHUB_TOKEN_HERE"
