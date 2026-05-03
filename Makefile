@@ -603,7 +603,7 @@ local-env-setup: setup-cluster-base ## Setup complete local demo environment wit
 	# Deploy everything server for local dev (use 'make deploy-test-servers' for all servers)
 	"$(MAKE)" deploy-everything-server
 	"$(MAKE)" deploy-example-minimal
-	@echo "Local environment setup complete"
+	@"$(MAKE)" -s local-env-setup-complete-message
 
 .PHONY: local-env-setup-olm
 local-env-setup-olm: setup-cluster-base ## Setup local environment with MCP Gateway and Kuadrant via OLM
@@ -622,7 +622,20 @@ local-env-setup-olm: setup-cluster-base ## Setup local environment with MCP Gate
 	"${MAKE}" add-jwt-key
 	"$(MAKE)" deploy-everything-server
 	"$(MAKE)" deploy-example-minimal
-	@echo "Local OLM environment setup complete"
+	@"$(MAKE)" -s local-env-setup-complete-message
+
+.PHONY: local-env-setup-complete-message
+local-env-setup-complete-message:
+	@echo ""
+	@echo "========================================="
+	@echo "Local environment setup complete"
+	@echo ""
+	@echo "MCP Gateway is available at:"
+	@echo "  http://$(MCP_GATEWAY_HOST):$(KIND_HOST_PORT_MCP_GATEWAY)/mcp"
+	@echo ""
+	@echo "Run 'make urls' to see all service URLs."
+	@echo "Run 'make info' for more setup info."
+	@echo "========================================="
 
 .PHONY: local-bare-setup
 local-bare-setup: setup-cluster-base ## Setup minimal cluster infrastructure (no MCP components)
