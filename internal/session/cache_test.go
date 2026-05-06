@@ -319,6 +319,34 @@ func TestInMemoryCache_RemoveServerSession_Concurrent(t *testing.T) {
 	require.Empty(t, sessions)
 }
 
+func TestInMemoryCache_DeleteSessions_Concurrent(t *testing.T) {
+	ctx := context.Background()
+	cache, err := NewCache()
+	require.NoError(t, err)
+
+	const n = 50
+	var wg sync.WaitGroup
+	wg.Add(n * 2)
+
+	// concurrent AddSession and DeleteSessions on the same key
+	for i := range n {
+		go func(i int) {
+			defer wg.Done()
+			_, addErr := cache.AddSession(ctx, "gateway-session-1",
+				fmt.Sprintf("server%d", i),
+				fmt.Sprintf("upstream-session-%d", i),
+			)
+			require.NoError(t, addErr)
+		}(i)
+
+		go func() {
+			defer wg.Done()
+			require.NoError(t, cache.DeleteSessions(ctx, "gateway-session-1"))
+		}()
+	}
+	wg.Wait()
+}
+
 func TestInMemoryCache_DeleteSessionsCleansUpElicitation(t *testing.T) {
 	ctx := context.Background()
 	cache, err := NewCache()

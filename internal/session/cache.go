@@ -49,6 +49,8 @@ func (c *Cache) GetSession(ctx context.Context, key string) (map[string]string, 
 // DeleteSessions deletes sessions and associated metadata from the cache
 func (c *Cache) DeleteSessions(ctx context.Context, key ...string) error {
 	if c.inmemory != nil {
+		c.innerMu.Lock()
+		defer c.innerMu.Unlock()
 		for _, k := range key {
 			c.inmemory.Delete(k)
 			c.inmemory.Delete(clientElicitationPrefix + k)
