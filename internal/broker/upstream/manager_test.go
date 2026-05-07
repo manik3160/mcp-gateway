@@ -994,8 +994,9 @@ func TestMCPManager_findToolConflicts_nilGateway(t *testing.T) {
 	mock.hasToolsCap = true
 	manager := NewUpstreamMCPManager(mock, nil, logger, 0, mcpv1alpha1.InvalidToolPolicyFilterOut)
 
-	// must not panic when gatewayServer is nil
-	assert.NotPanics(t, func() {
-		manager.manage(context.Background(), eventTypeTimer)
-	})
+	manager.manage(context.Background(), eventTypeTimer)
+
+	status := manager.GetStatus()
+	assert.False(t, status.Ready)
+	assert.Contains(t, status.Message, "gateway server is not configured")
 }

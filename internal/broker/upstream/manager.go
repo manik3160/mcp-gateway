@@ -313,7 +313,7 @@ func (man *MCPManager) setStatus(err error, toolCount int, invalidTools []Invali
 
 func (man *MCPManager) findToolConflicts(mcpTools []server.ServerTool) error {
 	if man.gatewayServer == nil {
-		return nil
+		return fmt.Errorf("gateway server is not configured for upstream %s", man.MCP.ID())
 	}
 	gatewayServerTools := man.gatewayServer.ListTools()
 	var conflictingToolNames []string
