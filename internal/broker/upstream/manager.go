@@ -102,7 +102,10 @@ const DefaultTickerInterval = time.Minute * 1
 // NewUpstreamMCPManager creates a new MCPManager for managing a single upstream MCP server.
 // The addTools and removeTools callbacks are used to update the gateway's tool registry.
 // The tickerInterval controls how often the manager checks backend health (use 0 for default).
-func NewUpstreamMCPManager(upstream MCP, gatewaySever ToolsAdderDeleter, logger *slog.Logger, tickerInterval time.Duration, policy mcpv1alpha1.InvalidToolPolicy) *MCPManager {
+func NewUpstreamMCPManager(upstream MCP, gatewaySever ToolsAdderDeleter, logger *slog.Logger, tickerInterval time.Duration, policy mcpv1alpha1.InvalidToolPolicy) (*MCPManager, error) {
+	if gatewaySever == nil {
+		return nil, fmt.Errorf("gateway server is required for upstream MCP manager")
+	}
 	if tickerInterval <= 0 {
 		tickerInterval = DefaultTickerInterval
 	}
@@ -118,7 +121,7 @@ func NewUpstreamMCPManager(upstream MCP, gatewaySever ToolsAdderDeleter, logger 
 		toolsMap:          map[string]*mcp.Tool{},
 		servedToolsMap:    map[string]*mcp.Tool{},
 		serverTools:       []server.ServerTool{},
-	}
+	}, nil
 }
 
 // MCPName returns the name of the upstream MCP server being managed
@@ -258,10 +261,10 @@ func (man *MCPManager) manage(ctx context.Context, event eventType) {
 	}
 	// serverTools will have the prefix if one is set
 	man.logger.Debug("updating gateway tools", "upstream mcp server", man.MCP.ID(), "adding", len(toAdd), "removing", len(toRemove))
-	if man.gatewayServer != nil && len(toRemove) > 0 {
+	if len(toRemove) > 0 {
 		man.gatewayServer.DeleteTools(toRemove...)
 	}
-	if man.gatewayServer != nil && len(toAdd) > 0 {
+	if len(toAdd) > 0 {
 		man.gatewayServer.AddTools(toAdd...)
 	}
 
@@ -312,9 +315,6 @@ func (man *MCPManager) setStatus(err error, toolCount int, invalidTools []Invali
 }
 
 func (man *MCPManager) findToolConflicts(mcpTools []server.ServerTool) error {
-	if man.gatewayServer == nil {
-		return fmt.Errorf("gateway server is not configured for upstream %s", man.MCP.ID())
-	}
 	gatewayServerTools := man.gatewayServer.ListTools()
 	var conflictingToolNames []string
 	for _, tool := range mcpTools {
@@ -413,9 +413,7 @@ func (man *MCPManager) removeAllTools() {
 	man.tools = []mcp.Tool{}
 	man.toolsMap = map[string]*mcp.Tool{}
 	man.servedToolsMap = map[string]*mcp.Tool{}
-	if man.gatewayServer != nil {
-		man.gatewayServer.DeleteTools(toolsToRemove...)
-	}
+	man.gatewayServer.DeleteTools(toolsToRemove...)
 	man.logger.Debug("removed all tools", "upstream mcp server", man.MCP.ID(), "count", len(toolsToRemove))
 }
 

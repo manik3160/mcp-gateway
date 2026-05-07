@@ -14,6 +14,7 @@ import (
 	"github.com/Kuadrant/mcp-gateway/internal/config"
 	jwt "github.com/golang-jwt/jwt/v5"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -51,7 +52,8 @@ func createTestManager(t *testing.T, serverName, toolPrefix string, tools []mcp.
 		ToolPrefix: toolPrefix,
 		URL:        "http://test.local/mcp",
 	})
-	manager := upstream.NewUpstreamMCPManager(mcpServer, nil, slog.Default(), 0, mcpv1alpha1.InvalidToolPolicyFilterOut)
+	manager, err := upstream.NewUpstreamMCPManager(mcpServer, newMockGateway(), slog.Default(), 0, mcpv1alpha1.InvalidToolPolicyFilterOut)
+	require.NoError(t, err)
 	// populate tools directly for testing (this requires accessing internal state)
 	manager.SetToolsForTesting(tools)
 	return manager

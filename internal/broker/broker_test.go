@@ -15,6 +15,7 @@ import (
 	"github.com/Kuadrant/mcp-gateway/internal/config"
 	"github.com/Kuadrant/mcp-gateway/internal/tests/server2"
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,6 +31,14 @@ const (
 )
 
 var logger = slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+// mockGateway is a no-op ToolsAdderDeleter for tests that don't need real gateway behaviour.
+type mockGateway struct{}
+
+func newMockGateway() *mockGateway                             { return &mockGateway{} }
+func (m *mockGateway) AddTools(_ ...server.ServerTool)        {}
+func (m *mockGateway) DeleteTools(_ ...string)                {}
+func (m *mockGateway) ListTools() map[string]*server.ServerTool { return nil }
 
 // TestMain starts an MCP server that we will run actual tests against
 func TestMain(m *testing.M) {
