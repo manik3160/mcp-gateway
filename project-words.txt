@@ -404,3 +404,7 @@ ztunnels
 startswith
 unmarshals
 xforwarded
+CONNLINK
+HKDF
+HMAC
+usercred
