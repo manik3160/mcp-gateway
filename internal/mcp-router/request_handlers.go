@@ -552,12 +552,14 @@ func (s *ExtProcServer) initializeMCPSeverSession(ctx context.Context, mcpReq *M
 		return "", NewRouterErrorf(500, "failed to create session for mcp server: %w", err)
 	}
 	var sessionCloser = func() {
-		s.Logger.DebugContext(ctx, "gateway session expired closing client", "Session ", mcpReq.GetSessionID())
+		// use a fresh context: the request-scoped ctx is canceled long before this fires
+		cleanupCtx := context.Background()
+		s.Logger.DebugContext(cleanupCtx, "gateway session expired closing client", "Session ", mcpReq.GetSessionID())
 		if err := clientHandle.Close(); err != nil {
-			s.Logger.DebugContext(ctx, "failed to close client connection", "err", err)
+			s.Logger.DebugContext(cleanupCtx, "failed to close client connection", "err", err)
 		}
-		if err := s.SessionCache.DeleteSessions(ctx, mcpReq.GetSessionID()); err != nil {
-			s.Logger.DebugContext(ctx, "failed to delete session", "session", mcpReq.GetSessionID(), "err", err)
+		if err := s.SessionCache.DeleteSessions(cleanupCtx, mcpReq.GetSessionID()); err != nil {
+			s.Logger.DebugContext(cleanupCtx, "failed to delete session", "session", mcpReq.GetSessionID(), "err", err)
 		}
 	}
 	// close connection with remote backend and delete any sessions when our gateway session expires
