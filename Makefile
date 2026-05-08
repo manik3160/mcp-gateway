@@ -487,8 +487,12 @@ bin/golangci-lint-kube-api-linter:
 spell:
 	cspell --quiet --config cspell.json .
 
+.PHONY: lint-go
+lint-go: check-gofmt check-goimports check-newlines fmt vet golangci-lint kube-api-linter ## Run Go linting and style checks
+	@echo "All Go lint checks passed!"
+
 .PHONY: lint
-lint: check-gofmt check-goimports check-newlines fmt vet golangci-lint kube-api-linter spell ## Run all linting and style checks
+lint: lint-go spell ## Run all linting and style checks
 	@echo "All lint checks passed!"
 
 # Code style checks
