@@ -307,7 +307,11 @@ func (m *mcpBrokerImpl) ValidateAllServers() StatusResponse {
 
 	m.logger.Debug("ValidateAllServers: checking servers", "# servers", len(m.mcpServers))
 
-	for _, upstream := range m.RegisteredMCPServers() {
+	// access m.mcpServers directly; RLock is already held.
+	// Calling RegisteredMCPServers() here would attempt a second RLock on the same
+	// goroutine. Go's sync.RWMutex blocks new readers when a writer is waiting, so a
+	// concurrent OnConfigChange() Lock() causes both goroutines to deadlock.
+	for _, upstream := range m.mcpServers {
 		status := upstream.GetStatus()
 		response.Servers = append(response.Servers, status)
 
