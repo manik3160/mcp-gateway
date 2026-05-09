@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Kuadrant/mcp-gateway/internal/broker/upstream"
 	"github.com/Kuadrant/mcp-gateway/internal/config"
 	"github.com/Kuadrant/mcp-gateway/internal/tests/server2"
 	"github.com/mark3labs/mcp-go/mcp"
@@ -287,6 +288,58 @@ func TestToolAnnotations(t *testing.T) {
 			require.True(t, exists, "expected annotation to be found")
 			require.Equal(t, tc.readOnly, *annotation.ReadOnlyHint, "readOnly mismatch: %#v", annotation)
 			require.Equal(t, tc.idempotent, *annotation.IdempotentHint, "idempotent mismatch: %#v", annotation)
+		})
+	}
+}
+
+func TestIsReady(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(b *mcpBrokerImpl)
+		expected bool
+	}{
+		{
+			name:     "no servers configured",
+			setup:    func(_ *mcpBrokerImpl) {},
+			expected: true,
+		},
+		{
+			name: "servers configured, none healthy",
+			setup: func(b *mcpBrokerImpl) {
+				mgr := createTestManager(t, "s1", "", nil)
+				mgr.SetStatusForTesting(upstream.ServerValidationStatus{Name: "s1", Ready: false})
+				b.mcpServers["s1"] = mgr
+			},
+			expected: false,
+		},
+		{
+			name: "one unhealthy one healthy",
+			setup: func(b *mcpBrokerImpl) {
+				m1 := createTestManager(t, "s1", "", nil)
+				m1.SetStatusForTesting(upstream.ServerValidationStatus{Name: "s1", Ready: false})
+				b.mcpServers["s1"] = m1
+				m2 := createTestManager(t, "s2", "", nil)
+				m2.SetStatusForTesting(upstream.ServerValidationStatus{Name: "s2", Ready: true})
+				b.mcpServers["s2"] = m2
+			},
+			expected: true,
+		},
+		{
+			name: "all servers healthy",
+			setup: func(b *mcpBrokerImpl) {
+				mgr := createTestManager(t, "s1", "", nil)
+				mgr.SetStatusForTesting(upstream.ServerValidationStatus{Name: "s1", Ready: true})
+				b.mcpServers["s1"] = mgr
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			b := NewBroker(logger).(*mcpBrokerImpl)
+			tt.setup(b)
+			require.Equal(t, tt.expected, b.IsReady())
 		})
 	}
 }

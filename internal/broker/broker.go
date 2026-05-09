@@ -40,6 +40,12 @@ type MCPBroker interface {
 	// ValidateAllServers performs comprehensive validation of all registered servers and returns status
 	ValidateAllServers() StatusResponse
 
+	// IsReady reports whether the broker can serve traffic.
+	// Returns true when no upstream servers are configured (empty tool list is valid),
+	// or when at least one configured upstream is healthy.
+	// Returns false only when servers are configured but none have connected yet.
+	IsReady() bool
+
 	// HandleStatusRequest handles HTTP status endpoint requests
 	HandleStatusRequest(w http.ResponseWriter, r *http.Request)
 
@@ -326,4 +332,21 @@ func (m *mcpBrokerImpl) ValidateAllServers() StatusResponse {
 		"overallValid", response.OverallValid)
 
 	return response
+}
+
+// IsReady reports whether the broker can serve traffic.
+// Accesses m.mcpServers directly (lock already not held here) rather than
+// calling RegisteredMCPServers to avoid nested RLock under a pending writer.
+func (m *mcpBrokerImpl) IsReady() bool {
+	m.mcpLock.RLock()
+	defer m.mcpLock.RUnlock()
+	if len(m.mcpServers) == 0 {
+		return true
+	}
+	for _, mgr := range m.mcpServers {
+		if mgr.GetStatus().Ready {
+			return true
+		}
+	}
+	return false
 }
