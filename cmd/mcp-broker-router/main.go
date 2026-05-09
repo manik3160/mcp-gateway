@@ -385,26 +385,26 @@ func LoadConfig(path string) {
 	if err != nil {
 		log.Fatalf("Error reading config file: %s", err)
 	}
-	// reset the servers to avoid old configs being written to
-	mcpConfig.Servers = []*config.MCPServer{}
-	err = viper.UnmarshalKey("servers", &mcpConfig.Servers)
+	var newServers []*config.MCPServer
+	err = viper.UnmarshalKey("servers", &newServers)
 	if err != nil {
 		log.Fatalf("Unable to decode server config into struct: %s", err)
 	}
-	mcpConfig.VirtualServers = []*config.VirtualServer{}
+	var newVirtualServers []*config.VirtualServer
 	// Load virtualServers if present - this is optional
 	if viper.IsSet("virtualServers") {
-		err = viper.UnmarshalKey("virtualServers", &mcpConfig.VirtualServers)
+		err = viper.UnmarshalKey("virtualServers", &newVirtualServers)
 		if err != nil {
 			log.Fatal("Failed to parse virtualServers configuration", "error", err)
 		}
 	} else {
 		logger.Debug("No virtualServers section found in configuration")
 	}
+	mcpConfig.SetServers(newServers, newVirtualServers)
 
-	logger.Debug("config successfully loaded", "# servers", len(mcpConfig.Servers))
+	logger.Debug("config successfully loaded", "# servers", len(newServers))
 
-	for _, s := range mcpConfig.Servers {
+	for _, s := range newServers {
 		logger.Debug(
 			"server config",
 			"server name",

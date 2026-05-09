@@ -32,6 +32,32 @@ func (config *MCPServersConfig) RegisterObserver(obs Observer) {
 	config.observers = append(config.observers, obs)
 }
 
+// SetServers atomically replaces the server and virtual-server lists.
+func (config *MCPServersConfig) SetServers(servers []*MCPServer, virtualServers []*VirtualServer) {
+	config.lock.Lock()
+	defer config.lock.Unlock()
+	config.Servers = servers
+	config.VirtualServers = virtualServers
+}
+
+// ListServers returns a consistent snapshot of the current server list.
+func (config *MCPServersConfig) ListServers() []*MCPServer {
+	config.lock.RLock()
+	defer config.lock.RUnlock()
+	out := make([]*MCPServer, len(config.Servers))
+	copy(out, config.Servers)
+	return out
+}
+
+// ListVirtualServers returns a consistent snapshot of the current virtual-server list.
+func (config *MCPServersConfig) ListVirtualServers() []*VirtualServer {
+	config.lock.RLock()
+	defer config.lock.RUnlock()
+	out := make([]*VirtualServer, len(config.VirtualServers))
+	copy(out, config.VirtualServers)
+	return out
+}
+
 // Notify notifies registered observers of config changes
 func (config *MCPServersConfig) Notify(ctx context.Context) {
 	config.lock.RLock()
