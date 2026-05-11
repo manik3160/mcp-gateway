@@ -321,6 +321,10 @@ func setUpHTTPServer(address string, mcpBroker broker.MCPBroker, sessionManager 
 		_, _ = fmt.Fprint(w, "Hello, World!  BTW, the MCP server is on /mcp")
 	})
 
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
 	mux.HandleFunc("/readyz", func(w http.ResponseWriter, _ *http.Request) {
 		if !mcpBroker.IsReady() {
 			w.WriteHeader(http.StatusServiceUnavailable)
