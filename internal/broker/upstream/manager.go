@@ -85,6 +85,8 @@ type MCPManager struct {
 	servedToolsMap map[string]*mcp.Tool
 	// toolsLock protects tools, serverTools
 	toolsLock sync.RWMutex
+	// manageMu serializes concurrent manage calls from the ticker and notification goroutines
+	manageMu sync.Mutex
 
 	logger *slog.Logger
 
@@ -186,6 +188,8 @@ func (man *MCPManager) registerCallbacks(ctx context.Context) func() {
 
 // manage should be the only entry point that triggers changes to tools
 func (man *MCPManager) manage(ctx context.Context, event eventType) {
+	man.manageMu.Lock()
+	defer man.manageMu.Unlock()
 	man.logger.Debug("managing connection", "upstream mcp server", man.MCP.ID(), "event type", event)
 	var numberOfTools = 0
 	// during connect the client will validate the protocol. So we don't have a separate validate requirement currently. If a client already exists it will be re-used.
