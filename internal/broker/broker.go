@@ -165,13 +165,18 @@ func NewBroker(logger *slog.Logger, opts ...Option) MCPBroker {
 }
 
 func (m *mcpBrokerImpl) OnConfigChange(ctx context.Context, conf *config.MCPServersConfig) {
-	m.logger.Debug("Broker OnConfigChange start", "Total managers for upstream mcp servers", len(m.mcpServers), "total servers", len(conf.Servers))
+	// Take a consistent snapshot before acquiring mcpLock; LoadConfig may be
+	// concurrently replacing conf.Servers/VirtualServers under its own write lock.
+	servers := conf.ListServers()
+	virtualServers := conf.ListVirtualServers()
+
+	m.logger.Debug("Broker OnConfigChange start", "Total managers for upstream mcp servers", len(m.mcpServers), "total servers", len(servers))
 	// unregister decommissioned servers
 	m.mcpLock.Lock()
 	defer m.mcpLock.Unlock()
 
 	for serverID := range m.mcpServers {
-		if !slices.ContainsFunc(conf.Servers, func(s *config.MCPServer) bool {
+		if !slices.ContainsFunc(servers, func(s *config.MCPServer) bool {
 			return serverID == s.ID()
 		}) {
 			m.logger.Info("un-register upstream server", "server id", serverID)
@@ -184,7 +189,7 @@ func (m *mcpBrokerImpl) OnConfigChange(ctx context.Context, conf *config.MCPServ
 	}
 	// ensure new servers registered
 
-	for _, mcpServer := range conf.Servers {
+	for _, mcpServer := range servers {
 		man, ok := m.mcpServers[mcpServer.ID()]
 		if ok {
 			m.logger.Info("Server is registered", "mcpID", mcpServer.ID())
@@ -213,11 +218,11 @@ func (m *mcpBrokerImpl) OnConfigChange(ctx context.Context, conf *config.MCPServ
 	}
 	// register virtual servers
 	m.vsLock.Lock()
-	for _, vs := range conf.VirtualServers {
+	for _, vs := range virtualServers {
 		m.virtualServers[vs.Name] = vs
 	}
 	m.vsLock.Unlock()
-	m.logger.Debug("Broker OnConfigChange done", "Total managers for upstream mcp servers", len(m.mcpServers), "total servers", len(conf.Servers))
+	m.logger.Debug("Broker OnConfigChange done", "Total managers for upstream mcp servers", len(m.mcpServers), "total servers", len(servers))
 }
 
 func (m *mcpBrokerImpl) RegisteredMCPServers() map[config.UpstreamMCPID]*upstream.MCPManager {
