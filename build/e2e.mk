@@ -38,7 +38,11 @@ test-e2e-watch: test-e2e-deps ## Run e2e tests in watch mode for development
 
 # CI-specific target that assumes cluster exists
 .PHONY: test-e2e-ci
-test-e2e-ci: test-e2e-deps enable-debug-logging ## Run e2e tests in CI (no setup, fail fast)
+test-e2e-ci: test-e2e-deps enable-debug-logging ## Run tier 1 e2e tests in CI ([Happy] only, fail fast)
+	$(GINKGO) -v --tags=e2e --timeout=$(E2E_TIMEOUT) --fail-fast --focus="\[Happy\]" ./tests/e2e
+
+.PHONY: test-e2e-ci-full
+test-e2e-ci-full: test-e2e-deps enable-debug-logging ## Run all e2e tests in CI (tier 1 + 2, fail fast)
 	$(GINKGO) -v --tags=e2e --timeout=$(E2E_TIMEOUT) --fail-fast ./tests/e2e
 
 # run only auth-focused tests (CI runs this after ci-auth-setup)
