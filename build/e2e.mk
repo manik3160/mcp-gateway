@@ -3,6 +3,8 @@
 GINKGO = $(shell pwd)/bin/ginkgo
 GINKGO_VERSION = v2.27.2
 E2E_TIMEOUT ?=15m
+# Tier-1 PR gate: single --focus regex for specs tagged in titles with [Happy]
+E2E_GINKGO_FOCUS_TIER1 = --focus="\[Happy\]"
 
 .PHONY: ginkgo
 ginkgo: ## Download ginkgo locally if necessary
@@ -24,7 +26,7 @@ test-e2e: ci-setup test-e2e-run ## Run full e2e test suite (setup + run)
 .PHONY: test-e2e-happy
 test-e2e-happy: test-e2e-deps ## Quick e2e test run for local development (no setup)
 	@echo "Running e2e tests (local mode)..."
-	$(GINKGO) -v --tags=e2e --timeout=$(E2E_TIMEOUT) --focus="\[Happy\]" ./tests/e2e
+	$(GINKGO) -v --tags=e2e --timeout=$(E2E_TIMEOUT) $(E2E_GINKGO_FOCUS_TIER1) ./tests/e2e
 
 .PHONY: test-e2e-cleanup
 test-e2e-cleanup: ## Clean up e2e test resources
@@ -39,7 +41,7 @@ test-e2e-watch: test-e2e-deps ## Run e2e tests in watch mode for development
 # CI-specific target that assumes cluster exists
 .PHONY: test-e2e-ci
 test-e2e-ci: test-e2e-deps enable-debug-logging ## Run tier 1 e2e tests in CI ([Happy] only, fail fast)
-	$(GINKGO) -v --tags=e2e --timeout=$(E2E_TIMEOUT) --fail-fast --focus="\[Happy\]" ./tests/e2e
+	$(GINKGO) -v --tags=e2e --timeout=$(E2E_TIMEOUT) --fail-fast $(E2E_GINKGO_FOCUS_TIER1) ./tests/e2e
 
 .PHONY: test-e2e-ci-full
 test-e2e-ci-full: test-e2e-deps enable-debug-logging ## Run all e2e tests in CI (tier 1 + 2, fail fast)

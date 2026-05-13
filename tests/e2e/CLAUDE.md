@@ -1,5 +1,9 @@
 # E2E Tests
 
+## Test tiers (PR CI vs nightly)
+
+Tier selection uses bracket tags in Ginkgo `Describe` / `It` titles (for example `[Happy]`, `[Full]`, `[multi-gateway]`). PR CI runs only `[Happy]` specs via `make test-e2e-ci` (`E2E_GINKGO_FOCUS_TIER1` in `build/e2e.mk`). The full suite, including other tags, runs under `make test-e2e-ci-full` (nightly workflow and on-demand full runs). When you add a spec, put it in tier 1 only if it is a fast happy-path regression check; otherwise use a non-`[Happy]` tag so it stays in the nightly or opt-in path.
+
 ## E2E Test Reliability
 - Tests use broker `/status` endpoint for reliable server registration checks (not log parsing)
 - Port-forwards target deployments directly: `deployment/mcp-gateway`
